@@ -23,6 +23,7 @@ from openbb_ai import get_widget_data, message_chunk, reasoning_step
 from .config import settings
 from .prompts import SYSTEM_PROMPT, REASONING_PROMPTS, ERROR_MESSAGES
 from .processors.widgets import process_widget_data
+from .processors.widget_intelligence import widget_intelligence
 from .processors.pdf import process_pdf_data
 from .processors.spreadsheet import process_spreadsheet_data
 from .processors.api_data import process_api_data
@@ -31,6 +32,7 @@ from .processors.web_search import process_web_search, detect_web_search_request
 from .visualizations.charts import generate_charts
 from .visualizations.tables import generate_tables
 from .processors.financial_web_search import FinancialWebSearcher
+from .core.ml_widget_bridge import ml_widget_bridge
 from .utils.data_correlator import correlate_sentiment_with_prices  # Assume utility for fusion
 from .utils.alerting import send_alert
 
@@ -89,9 +91,9 @@ def get_agent_description():
     return JSONResponse(
         content={
             "comprehensive_agent": {
-                "name": "Comprehensive Financial Agent",
-                "description": "Advanced financial assistant with widget data processing, file upload support (PDF, Excel, CSV, JSON), charts, tables, citations, web search (@web), and local Ollama integration.",
-                "image": "https://github.com/OpenBB-finance/copilot-for-terminal-pro/assets/14093308/7da2a512-93b9-478d-90bc-b8c3dd0cabcf",
+                "name": settings.openbb_agent_name,
+                "description": settings.openbb_agent_description,
+                "image": settings.openbb_agent_image,
                 "endpoints": {"query": f"http://localhost:{settings.server_port}/v1/query"},
                 "features": {
                     "streaming": True,
@@ -308,11 +310,31 @@ async def query(request: QueryRequest) -> EventSourceResponse:
                         )
                 elif message.role == "tool" and index == len(request.messages) - 1:
                     yield reasoning_step(REASONING_PROMPTS["processing_widgets"]).model_dump()
-                    
+
                     widget_data = message.data
                     logger.info(f"=== PROCESSING TOOL MESSAGE ===")
                     logger.info(f"Tool message data type: {type(widget_data)}")
                     logger.info(f"Raw tool message data: {str(widget_data)[:1000]}...")
+
+                    # Apply widget intelligence if enabled
+                    if settings.enable_widget_intelligence and request.widgets and request.widgets.primary:
+                        yield reasoning_step(REASONING_PROMPTS["analyzing_widgets"]).model_dump()
+                        try:
+                            # Analyze dashboard context
+                            dashboard_profile = await widget_intelligence.analyze_dashboard(request.widgets.primary)
+                            logger.info(f"Dashboard profile: {dashboard_profile}")
+
+                            # Add dashboard context to ollama messages
+                            dashboard_context = f"\n\n**Dashboard Context:**\n"
+                            dashboard_context += f"- Primary focus: {dashboard_profile.get('primary_focus', 'general')}\n"
+                            dashboard_context += f"- Analysis style: {dashboard_profile.get('analysis_style', 'balanced')}\n"
+                            if dashboard_profile.get('top_symbols'):
+                                dashboard_context += f"- Tracking: {', '.join(dashboard_profile['top_symbols'][:5])}\n"
+                            dashboard_context += f"- Widgets: {dashboard_profile.get('widget_count', 0)}\n"
+
+                            context_str += dashboard_context
+                        except Exception as e:
+                            logger.warning(f"Widget intelligence analysis failed: {e}")
                     
                     # Use the official OpenBB approach for handling widget data (including PDFs)
                     try:
@@ -330,6 +352,32 @@ async def query(request: QueryRequest) -> EventSourceResponse:
                             # Process all widget data including PDFs
                             processed_data = await handle_widget_data_with_files(widget_data)
                             context_str += f"\n\n{processed_data}"
+
+                            # Apply ML analysis if enabled
+                            if settings.enable_ml_predictions and request.widgets and request.widgets.primary:
+                                yield reasoning_step(REASONING_PROMPTS["applying_ml"]).model_dump()
+                                try:
+                                    # Analyze each widget with ML
+                                    ml_insights = []
+                                    for widget in request.widgets.primary:
+                                        widget_context = await widget_intelligence.analyze_widget(widget, widget_data)
+                                        ml_result = await ml_widget_bridge.auto_apply_ml(
+                                            widget_data,
+                                            widget_context.detected_type,
+                                            widget_context.__dict__
+                                        )
+
+                                        if ml_result.get("status") == "success" and ml_result.get("insights"):
+                                            ml_insights.extend(ml_result["insights"])
+                                            logger.info(f"ML insights for {widget.name}: {ml_result['insights']}")
+
+                                    # Add ML insights to context
+                                    if ml_insights:
+                                        context_str += f"\n\n**ML Insights:**\n"
+                                        for insight in ml_insights[:5]:  # Limit to top 5
+                                            context_str += f"- {insight}\n"
+                                except Exception as e:
+                                    logger.warning(f"ML analysis failed: {e}")
                         else:
                             # Handle single DataContent object
                             processed_data = await handle_widget_data_with_files([widget_data])

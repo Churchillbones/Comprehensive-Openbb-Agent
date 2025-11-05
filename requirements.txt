@@ -5,5 +5,6 @@ sse-starlette>=2.1.2
 pdfplumber>=0.11.5
 openbb-ai>=1.5.0
 pydantic>=2.0.0
+pydantic-settings>=2.0.0
 pytest>=8.3.1
 pytest-asyncio>=0.23.8
