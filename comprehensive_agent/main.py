@@ -33,6 +33,8 @@ from .visualizations.charts import generate_charts
 from .visualizations.tables import generate_tables
 from .processors.financial_web_search import FinancialWebSearcher
 from .core.ml_widget_bridge import ml_widget_bridge
+from .core.financial_workspace import workspace as financial_workspace
+from .core.proactive_agent import proactive_agent
 from .utils.data_correlator import correlate_sentiment_with_prices  # Assume utility for fusion
 from .utils.alerting import send_alert
 
@@ -414,6 +416,44 @@ Troubleshooting Steps:
                     if file_names:
                         context_str += f"\n\nUploaded Files: {', '.join(file_names)} (content extraction in progress...)"
                         yield reasoning_step(f"Found {len(file_names)} file(s) but content extraction needs improvement").model_dump()
+
+            # 🌟 PROACTIVE INTELLIGENCE - The Core Innovation
+            # If we have widgets, build a financial workspace and generate proactive insights
+            if request.widgets and request.widgets.primary and settings.enable_proactive_insights:
+                try:
+                    yield reasoning_step("🧠 Analyzing your financial workspace...").model_dump()
+
+                    # Build the living model of user's financial world
+                    await financial_workspace.build_from_widgets(
+                        request.widgets.primary,
+                        widget_data_map=None  # Could pass actual widget data if available
+                    )
+
+                    # Generate Morning Intelligence Briefing
+                    yield reasoning_step("🔍 Generating proactive insights...").model_dump()
+                    morning_briefing = await proactive_agent.generate_morning_briefing(
+                        financial_workspace,
+                        widget_data
+                    )
+
+                    # Stream the briefing as actual message content (not just reasoning)
+                    if morning_briefing:
+                        logger.info("Streaming morning intelligence briefing")
+
+                        # Stream briefing in chunks for better UX
+                        briefing_lines = morning_briefing.split('\n')
+                        for line in briefing_lines:
+                            if line.strip():  # Only non-empty lines
+                                yield message_chunk(line + '\n').model_dump()
+
+                        # Add separator before normal response
+                        yield message_chunk("\n\n---\n\n").model_dump()
+
+                        logger.info("Morning intelligence briefing delivered")
+
+                except Exception as e:
+                    logger.warning(f"Proactive intelligence generation failed: {e}")
+                    # Don't fail the whole request - just log and continue
 
             if context_str:
                 ollama_messages[-1]["content"] += f"\n\n{context_str}"
