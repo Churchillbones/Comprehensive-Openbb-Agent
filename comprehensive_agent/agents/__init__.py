@@ -20,7 +20,7 @@ from .base_agent import BaseAgent, AgentState
 from .market_data_agent import MarketDataAgent
 from .news_sentiment_agent import NewsSentimentAgent
 from .technical_analysis_agent import TechnicalAnalysisAgent
-# from .fundamental_analysis_agent import FundamentalAnalysisAgent
+from .fundamental_analysis_agent import FundamentalAnalysisAgent
 # from .risk_analytics_agent import RiskAnalyticsAgent
 # from .portfolio_management_agent import PortfolioManagementAgent
 # from .economic_analysis_agent import EconomicAnalysisAgent
@@ -33,8 +33,8 @@ __all__ = [
     "NewsSentimentAgent",
     # Phase 2b
     "TechnicalAnalysisAgent",
+    "FundamentalAnalysisAgent",
     # Remaining agents will be added in Phase 2b/2c
-    # "FundamentalAnalysisAgent",
     # "RiskAnalyticsAgent",
     # "PortfolioManagementAgent",
     # "EconomicAnalysisAgent"
