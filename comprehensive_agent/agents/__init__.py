@@ -19,7 +19,7 @@ from .base_agent import BaseAgent, AgentState
 # Import specialized agents when they are implemented
 from .market_data_agent import MarketDataAgent
 from .news_sentiment_agent import NewsSentimentAgent
-# from .technical_analysis_agent import TechnicalAnalysisAgent
+from .technical_analysis_agent import TechnicalAnalysisAgent
 # from .fundamental_analysis_agent import FundamentalAnalysisAgent
 # from .risk_analytics_agent import RiskAnalyticsAgent
 # from .portfolio_management_agent import PortfolioManagementAgent
@@ -31,8 +31,9 @@ __all__ = [
     # Specialized agents (Phase 2a)
     "MarketDataAgent",
     "NewsSentimentAgent",
+    # Phase 2b
+    "TechnicalAnalysisAgent",
     # Remaining agents will be added in Phase 2b/2c
-    # "TechnicalAnalysisAgent",
     # "FundamentalAnalysisAgent",
     # "RiskAnalyticsAgent",
     # "PortfolioManagementAgent",
